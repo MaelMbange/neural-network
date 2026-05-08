@@ -1,0 +1,30 @@
+[package]
+name = "rna"
+version = "0.1.0"
+edition = "2024"
+
+# [[bin]]
+# name = "rna"
+# path = "src/main.rs"
+
+# [[bin]]
+# name = "perceptron"
+# path = "src/bin/perceptron.rs"
+
+# [[bin]]
+# name = "gradient"
+# path = "src/bin/gradient.rs"
+
+# [[bin]]
+# name = "visualize"
+# path = "src/bin/visualize.rs"
+
+[dependencies]
+rand = "0.10.1"
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+eframe = "0.31"
+egui = "0.31"
+egui_plot = "0.31"
+csv = "1.4.0"
+

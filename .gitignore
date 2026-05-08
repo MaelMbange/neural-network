@@ -1,0 +1,9 @@
+/target
+old.txt
+./Cargo.lock
+./.vscode
+./.idea
+history.json
+history_regression_test.json
+/Datas
+*.txt
