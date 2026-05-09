@@ -1,6 +1,6 @@
 use rna::{
     csv_reader::load_dataset_multi,
-    network::singlelayer::SingleLayer,
+    network::layer::Layer,
     neuron::{
         activation::identity::Identity, classification_config::ClassificationConfig,
         gradient::Gradient,
@@ -19,19 +19,9 @@ fn main() {
 
     let conf = None;
 
-    let mut network = SingleLayer::new(vec![
-        Gradient::new(
-            2,
-            0.0,
-            0.0001,
-            0.01,
-            &conf,
-            0.0..=0.0,
-            Identity
-        );
-        3
-    ]);
-    network.set_debug(true);
+    let mut network = Layer::new(3, || {
+        Gradient::new(2, 0.0, 0.0001, 0.01, &conf, 0.0..=0.0, Identity)
+    });
 
-    SingleLayer::train(&mut network, &datas, Some(300));
+    Layer::train(&mut network, &datas, Some(300));
 }

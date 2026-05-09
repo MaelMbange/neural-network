@@ -1,6 +1,6 @@
 use rna::{
     csv_reader::load_dataset_multi,
-    network::singlelayer::SingleLayer,
+    network::layer::Layer,
     neuron::{
         activation::identity::Identity, adaline::Adaline,
         classification_config::ClassificationConfig,
@@ -8,8 +8,9 @@ use rna::{
 };
 
 fn main() {
-    let datas = load_dataset_multi("Datas/Datas/table_3_1.csv", 2, 3, false)
-        .expect("Failed to load dataset");
+    let datas: Vec<(Vec<f64>, Vec<f64>)> =
+        load_dataset_multi("Datas/Datas/table_3_1.csv", 2, 3, false)
+            .expect("Failed to load dataset");
 
     let _conf = Some(ClassificationConfig {
         error_limit: 0,
@@ -18,19 +19,12 @@ fn main() {
     });
 
     let conf = None;
-    let mut network = SingleLayer::new(vec![
-        Adaline::new(
-            2,
-            0.0,
-            0.001,
-            0.01,
-            &conf,
-            0.0..=0.0,
-            Identity
-        );
-        3
-    ]);
-    network.set_debug(true);
 
-    SingleLayer::train(&mut network, &datas, Some(300));
+    let mut l = Layer::new(3, || {
+        Adaline::new(2, 0.0, 0.001, 0.01, &conf, 0.0..=0.0, Identity)
+    });
+
+    l.train(&datas, Some(300));
+
+    println!("{l:#?}");
 }

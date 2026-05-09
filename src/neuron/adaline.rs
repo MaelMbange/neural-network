@@ -89,7 +89,6 @@ impl<'a, A: Activation> Adaline<'a, A> {
                 println!("Epoch {epoch}");
             }
 
-            //calcule erreur locale
             for (inputs, expected) in dataset.iter() {
                 let prediction = self.predict(inputs);
                 let error = *expected - prediction;
@@ -102,14 +101,12 @@ impl<'a, A: Activation> Adaline<'a, A> {
                     );
                 }
 
-                //mise à jour des poids et du biais
                 for (x, w) in inputs.iter().zip(self.weights.iter_mut()) {
                     *w += self.learning_rate * error as f64 * x;
                 }
                 self.bias += self.learning_rate * error as f64;
             }
 
-            // calcule erreur quadratique
             for (inputs, expected) in dataset {
                 let prediction = self.predict(inputs);
                 let error = *expected - prediction;
