@@ -17,13 +17,14 @@ fn main() {
         values: (-1.0, 1.0),
     });
 
-    let conf = None;
+    let _conf = None;
 
-    let mut network = Layer::new(3, || {
-        Adaline::new(2, 0.0, 0.0001, 0.01, &conf, 0.0..=0.0, Identity)
+    let mut network = Layer::new(4, || {
+        Adaline::new(25, 0.0, 0.001, 0.05, &_conf, 0.0..=0.0, Identity)
     });
 
     Layer::train(&mut network, &datas, Some(1_000));
+    println!("Trained network: {:#?}", network);
 
     println!("Classification results:");
     for (i, (data, _)) in datas.iter().enumerate() {
