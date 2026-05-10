@@ -122,8 +122,8 @@ impl<'a, A: Activation> Gradient<'a, A> {
                 //exemple i=3: delta_bias = -0.4 + 0.2 * -1 = -0.6; delta_weights = [0, -0.2] + [0.2 * -1 * 1, 0.2 * -1 * 0]    = [-0.2, -0.2]
                 //exemple i=4: delta_bias = -0.6 + 0.2 * 1 = -0.4;  delta_weights = [-0.2, -0.2] + [0.2 * 1 * 1, 0.2 * 1 * 1]   = [0, 0]
                 delta_bias += self.learning_rate * error;
-                for (delta_w, x) in delta_weights.iter_mut().zip(inputs.iter()) {
-                    *delta_w += self.learning_rate * error * x;
+                for (delta_w, input) in delta_weights.iter_mut().zip(inputs.iter()) {
+                    *delta_w += self.learning_rate * error * input;
                 }
             }
 
