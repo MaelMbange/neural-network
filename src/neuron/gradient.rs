@@ -7,7 +7,7 @@ use crate::neuron::history::{NoopObserver, TrainObserver};
 use crate::neuron::trainable::Trainable;
 use crate::neuron::{Neuron, activation::Activation};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Gradient<'a, A: Activation> {
     bias: f64,
     weights: Vec<f64>,
@@ -213,21 +213,5 @@ impl<'a, A: Activation> Neuron for Gradient<'a, A> {
 impl<'a, A: Activation> Trainable for Gradient<'a, A> {
     fn train(&mut self, dataset: &[(Vec<f64>, f64)], epochs: Option<usize>) {
         self.train_with_observer(dataset, epochs, &mut NoopObserver);
-    }
-}
-
-impl<'a, A: Activation + Clone> Clone for Gradient<'_, A> {
-    fn clone(&self) -> Self {
-        Gradient {
-            bias: self.bias,
-            learning_rate: self.learning_rate,
-            weights: self.weights.clone(),
-            activation: self.activation.clone(),
-            tolerance: self.tolerance,
-            classification_configuration: self.classification_configuration,
-            mean_error: self.mean_error,
-            epoch: self.epoch,
-            debug: self.debug,
-        }
     }
 }

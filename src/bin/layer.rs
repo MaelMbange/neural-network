@@ -18,10 +18,10 @@ fn main() {
         values: (-1.0, 1.0),
     });
 
-    let conf = None;
+    let _conf = None;
 
     let mut l = Layer::new(3, || {
-        Adaline::new(2, 0.0, 0.001, 0.01, &conf, 0.0..=0.0, Identity)
+        Adaline::new(2, 0.0, 0.001, 0.01, &_conf, 0.0..=0.0, Identity)
     });
 
     l.train(&datas, Some(300));

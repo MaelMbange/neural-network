@@ -27,9 +27,18 @@ fn main() {
     println!("Trained network: {:#?}", network);
 
     println!("Classification results:");
+
     for (i, (data, _)) in datas.iter().enumerate() {
         let output = network.classify(data, 0.0, (-1.0, 1.0));
-        println!("Data {}: Output: {:?}", i + 1, output);
+        let classname = match output.as_slice() {
+            [1.0, -1.0, -1.0, -1.0] => "A",
+            [-1.0, 1.0, -1.0, -1.0] => "B",
+            [-1.0, -1.0, 1.0, -1.0] => "C",
+            [-1.0, -1.0, -1.0, 1.0] => "D",
+            _ => "Unknown",
+        };
+
+        println!("Data {}: Output: {:?}", i + 1, classname);
     }
 
     println!("\nClassify a new data point:");

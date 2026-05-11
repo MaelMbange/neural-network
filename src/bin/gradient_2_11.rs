@@ -5,6 +5,7 @@ use rna::neuron::{
     history::{HistoryFile, HistoryRecorder},
 };
 
+//regression par la methode des moindres carres
 fn main() {
     let dataset: Vec<(Vec<f64>, f64)> = vec![
         (vec![10.0], 4.4),

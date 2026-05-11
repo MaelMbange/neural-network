@@ -4,7 +4,7 @@ use rand::distr::uniform::SampleRange;
 use rand::random_range;
 use std::fmt::Debug;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Perceptron<A: Activation> {
     bias: f64,
     learning_rate: f64,
