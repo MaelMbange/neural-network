@@ -1,11 +1,11 @@
 use crate::neuron::trainable::Trainable;
 
 #[derive(Debug, Clone)]
-pub struct Layer<N: Trainable> {
+pub struct SingleLayer<N: Trainable> {
     pub neurons: Vec<N>,
 }
 
-impl<N: Trainable> Layer<N> {
+impl<N: Trainable> SingleLayer<N> {
     pub fn new(neuron_count: usize, neuron_factory: impl Fn() -> N) -> Self {
         let neurons = (0..neuron_count).map(|_| neuron_factory()).collect();
         Self { neurons }
@@ -41,18 +41,5 @@ impl<N: Trainable> Layer<N> {
                 .collect();
             neuron.train(&sub_dataset, epochs);
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Network<L: Trainable> {
-    pub layers: Vec<L>,
-}
-
-impl<L: Trainable> Network<L> {
-    pub fn predict(&self, inputs: &[f64]) -> Vec<f64> {}
-
-    pub fn train(&mut self, dataset: &[(Vec<f64>, Vec<f64>)], epochs: Option<usize>) {
-        loop {}
     }
 }

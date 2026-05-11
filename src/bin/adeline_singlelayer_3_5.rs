@@ -1,6 +1,6 @@
 use rna::{
     csv_reader::load_dataset_multi,
-    network::layer::Layer,
+    network::single_layer::SingleLayer,
     neuron::{
         activation::identity::Identity, adaline::Adaline,
         classification_config::ClassificationConfig,
@@ -19,11 +19,11 @@ fn main() {
 
     let _conf = None;
 
-    let mut network = Layer::new(4, || {
+    let mut network = SingleLayer::new(4, || {
         Adaline::new(25, 0.0, 0.001, 0.05, &_conf, 0.0..=0.0, Identity)
     });
 
-    Layer::train(&mut network, &datas, Some(1_000));
+    SingleLayer::train(&mut network, &datas, Some(1_000));
     println!("Trained network: {:#?}", network);
 
     println!("Classification results:");
