@@ -23,6 +23,7 @@ impl<N: Trainable> Layer<N> {
     }
 
     pub fn train(&mut self, dataset: &[(Vec<f64>, Vec<f64>)], epochs: Option<usize>) {
+        // on vefifie juste que les sorties attendues ont la même longueur que le nombre de neurones dans la couche
         for (idx, (_, expected)) in dataset.iter().enumerate() {
             assert_eq!(
                 expected.len(),
@@ -40,5 +41,18 @@ impl<N: Trainable> Layer<N> {
                 .collect();
             neuron.train(&sub_dataset, epochs);
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Network<L: Trainable> {
+    pub layers: Vec<L>,
+}
+
+impl<L: Trainable> Network<L> {
+    pub fn predict(&self, inputs: &[f64]) -> Vec<f64> {}
+
+    pub fn train(&mut self, dataset: &[(Vec<f64>, Vec<f64>)], epochs: Option<usize>) {
+        loop {}
     }
 }
