@@ -7,9 +7,10 @@ use crate::gui_module::{
     experiments::{ExperimentKind, TrainingResult, all_experiments, get_full_dataset, run_experiment},
     params::{HyperParams, MlpActivation},
     plots::{
-        draw_loss_curve, draw_loss_curve_mlp, draw_loss_curve_single_layer,
-        draw_mlp_boundary_2d, draw_mlp_regression_1d, draw_regression_1d,
-        draw_scatter_2d_boundary, draw_weight_sparklines_mlp, draw_weight_sparklines_single_layer,
+        draw_loss_curve, draw_loss_curve_mlp, draw_loss_curve_mlp_multi,
+        draw_loss_curve_single_layer, draw_mlp_boundary_2d, draw_mlp_regression_1d,
+        draw_regression_1d, draw_scatter_2d_boundary, draw_weight_sparklines_mlp,
+        draw_weight_sparklines_single_layer,
     },
 };
 use crate::history::{MlpHistory, SingleLayerHistory};
@@ -560,14 +561,13 @@ impl GuiApp {
             name, h.total_epochs, n_layers, h.activation
         ));
 
-        draw_loss_curve_mlp(ui, h, name);
-        ui.separator();
-
         // Load the full multi-output dataset once for boundary / regression plots.
         let full_data = get_full_dataset(name).ok();
 
         if h.input_dim == 2 {
             // ── 2D decision boundary ──────────────────────────────────────────
+            draw_loss_curve_mlp(ui, h, name);
+            ui.separator();
             let max_epoch = h.snapshots.len().saturating_sub(1);
             self.ui_state.epoch_slider = self.ui_state.epoch_slider.min(max_epoch);
 
@@ -584,6 +584,8 @@ impl GuiApp {
             }
         } else if h.input_dim == 1 {
             // ── 1D regression line ────────────────────────────────────────────
+            draw_loss_curve_mlp(ui, h, name);
+            ui.separator();
             let max_epoch = h.snapshots.len().saturating_sub(1);
             self.ui_state.epoch_slider = self.ui_state.epoch_slider.min(max_epoch);
 
@@ -599,7 +601,9 @@ impl GuiApp {
                 ui.heading(format!("Epoch {} — MSE = {:.6}", snap.epoch, snap.loss));
             }
         } else {
-            // ── High-dim: sparklines + slider only ────────────────────────────
+            // ── High-dim: per-output loss curve + sparklines + slider ─────────
+            draw_loss_curve_mlp_multi(ui, h, name);
+            ui.separator();
             if n_layers > 0 {
                 self.draw_mlp_sparklines(ui, h, name);
             }

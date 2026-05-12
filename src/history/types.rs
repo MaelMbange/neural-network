@@ -96,6 +96,9 @@ pub struct MlpEpochSnapshot {
     pub layers: Vec<LayerSnapshot>,
     /// squarred_error_sum / n  (MSE, matching MLP::train formula)
     pub loss: f64,
+    /// Per-output-neuron MSE for this epoch (one value per output neuron).
+    /// Enables a multi-series loss chart for experiments with several outputs.
+    pub per_output_mse: Vec<f64>,
 }
 
 #[derive(Debug, Clone, Serialize)]

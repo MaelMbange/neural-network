@@ -87,6 +87,23 @@ pub fn train_mlp_with_history<A: Activation + Derivative>(
 
         let mse = squarred_error_sum / inputs.len() as f64;
 
+        // Per-output MSE from the last layer's outputs (already collected, no extra passes).
+        let n_outs = expected.first().map(|e| e.len()).unwrap_or(0);
+        let per_output_mse: Vec<f64> = (0..n_outs)
+            .map(|oi| {
+                let sse: f64 = outputs_per_layer[num_layers - 1]
+                    .iter()
+                    .zip(expected.iter())
+                    .map(|(out, exp)| {
+                        let p = out.get(oi).copied().unwrap_or(0.0);
+                        let t = exp.get(oi).copied().unwrap_or(0.0);
+                        0.5 * (t - p) * (t - p)
+                    })
+                    .sum();
+                sse / inputs.len() as f64
+            })
+            .collect();
+
         let layer_snaps: Vec<LayerSnapshot> = mlp
             .layers
             .iter()
@@ -105,7 +122,12 @@ pub fn train_mlp_with_history<A: Activation + Derivative>(
             })
             .collect();
 
-        let snap = MlpEpochSnapshot { epoch: mlp.epoch, layers: layer_snaps, loss: mse };
+        let snap = MlpEpochSnapshot {
+            epoch: mlp.epoch,
+            layers: layer_snaps,
+            loss: mse,
+            per_output_mse,
+        };
 
         if verbose {
             println!("[mlp] epoch {:>5}  MSE = {:.6}", snap.epoch, snap.loss);

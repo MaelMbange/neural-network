@@ -38,6 +38,34 @@ pub fn draw_loss_curve_mlp(ui: &mut Ui, history: &MlpHistory, id_salt: &str) {
         });
 }
 
+/// Multi-series loss: one line per output neuron + one thicker total-MSE line.
+/// Falls back to the single-line version when there is only 1 output.
+pub fn draw_loss_curve_mlp_multi(ui: &mut Ui, history: &MlpHistory, id_salt: &str) {
+    let n_out = history.snapshots.first().map(|s| s.per_output_mse.len()).unwrap_or(0);
+    if n_out <= 1 {
+        return draw_loss_curve_mlp(ui, history, id_salt);
+    }
+
+    Plot::new(format!("loss_curve_mlp_multi_{}", id_salt))
+        .legend(Legend::default())
+        .height(200.0)
+        .show(ui, |plot_ui| {
+            // Total MSE (bold)
+            let total: PlotPoints = history
+                .snapshots.iter().map(|s| [s.epoch as f64, s.loss]).collect();
+            plot_ui.line(Line::new(total).name("MSE total").width(2.5));
+
+            // Per-output lines
+            for oi in 0..n_out {
+                let pts: PlotPoints = history
+                    .snapshots.iter()
+                    .map(|s| [s.epoch as f64, s.per_output_mse.get(oi).copied().unwrap_or(0.0)])
+                    .collect();
+                plot_ui.line(Line::new(pts).name(format!("output {}", oi)));
+            }
+        });
+}
+
 pub fn draw_loss_curve_single_layer(ui: &mut Ui, history: &SingleLayerHistory, id_salt: &str) {
     Plot::new(format!("loss_sl_{}", id_salt))
         .legend(Legend::default())
@@ -182,6 +210,9 @@ pub fn draw_mlp_boundary_2d(
 
     let n_outputs = snapshot.layers.last().map(|l| l.neurons.len()).unwrap_or(1);
     let multi_class = n_outputs > 1;
+    // Binary classification: truth ∈ {0,1} but n_outputs == 1 → need 2 buckets.
+    // Multi-class: truth ∈ 0..n_outputs → n_outputs buckets.
+    let n_groups = if multi_class { n_outputs } else { 2 };
 
     // ── Grid ─────────────────────────────────────────────────────────────────
     let mut pixels = vec![0u8; GRID * GRID * 4];
@@ -211,8 +242,8 @@ pub fn draw_mlp_boundary_2d(
 
     // ── Scatter ───────────────────────────────────────────────────────────────
     // Group by (true_class, correct?) for coloring/shaping.
-    let mut by_class_correct: Vec<Vec<[f64; 2]>> = vec![Vec::new(); n_outputs];
-    let mut by_class_wrong:   Vec<Vec<[f64; 2]>> = vec![Vec::new(); n_outputs];
+    let mut by_class_correct: Vec<Vec<[f64; 2]>> = vec![Vec::new(); n_groups];
+    let mut by_class_wrong:   Vec<Vec<[f64; 2]>> = vec![Vec::new(); n_groups];
 
     for (inp, tgt) in inputs.iter().zip(targets.iter()) {
         if inp.len() < 2 { continue; }
@@ -249,7 +280,7 @@ pub fn draw_mlp_boundary_2d(
                     egui::Vec2::new((x_max - x_min) as f32, (y_max - y_min) as f32),
                 ).name("decision regions"),
             );
-            for ci in 0..n_outputs {
+            for ci in 0..n_groups {
                 let (r, g, b) = class_color(ci);
                 let col = egui::Color32::from_rgb(r, g, b);
                 if !by_class_correct[ci].is_empty() {

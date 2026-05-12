@@ -1,4 +1,3 @@
-use rand::seq::SliceRandom;
 use rna::{activation::tanh::Tanh, csv_reader::load_dataset_multi, layer::MLP};
 
 fn main() {
