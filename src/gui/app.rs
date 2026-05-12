@@ -39,6 +39,8 @@ const SPEED_OPTIONS: &[(&str, f32)] = &[
 
 // ── Per-experiment playback/view state ────────────────────────────────────────
 
+const PLOT_SCALES: &[f32] = &[1.0, 1.5, 2.0, 2.5];
+
 struct ExperimentUiState {
     epoch_slider: usize,
     mlp_layer: usize,
@@ -47,6 +49,7 @@ struct ExperimentUiState {
     playing: bool,
     speed_idx: usize,
     last_advance: Option<Instant>,
+    plot_scale_idx: usize,
 }
 
 impl Default for ExperimentUiState {
@@ -59,6 +62,7 @@ impl Default for ExperimentUiState {
             playing: false,
             speed_idx: 1,
             last_advance: None,
+            plot_scale_idx: 0,
         }
     }
 }
@@ -98,6 +102,10 @@ impl GuiApp {
 
     fn selected_name(&self) -> &str {
         self.experiment_names[self.selected]
+    }
+
+    fn plot_scale(&self) -> f32 {
+        PLOT_SCALES[self.ui_state.plot_scale_idx]
     }
 
     fn kind_for_selected(&self) -> ExperimentKind {
@@ -379,6 +387,12 @@ impl GuiApp {
                         ui.selectable_value(&mut self.ui_state.speed_idx, i, *label);
                     }
                 });
+            ui.separator();
+            let scale = PLOT_SCALES[self.ui_state.plot_scale_idx];
+            if ui.button(format!("⊞ {:.0}%", scale * 100.0)).clicked() {
+                self.ui_state.plot_scale_idx =
+                    (self.ui_state.plot_scale_idx + 1) % PLOT_SCALES.len();
+            }
         });
 
         if self.ui_state.playing {
@@ -462,7 +476,7 @@ impl GuiApp {
         self.ui_state.epoch_slider = self.ui_state.epoch_slider.min(max_epoch);
 
         ui.heading(format!("Loss — {} ({} epochs)", name, h.total_epochs));
-        draw_loss_curve(ui, h, name);
+        draw_loss_curve(ui, h, name, self.plot_scale());
 
         ui.separator();
         self.draw_playback_controls(ui, ctx, max_epoch);
@@ -472,11 +486,11 @@ impl GuiApp {
         match kind {
             ExperimentKind::Perceptron2D { .. } => {
                 ui.heading("Decision boundary");
-                draw_scatter_2d_boundary(ui, dataset, snap, name);
+                draw_scatter_2d_boundary(ui, dataset, snap, name, self.plot_scale());
             }
             ExperimentKind::Regression1D => {
                 ui.heading("Regression line");
-                draw_regression_1d(ui, dataset, snap, name);
+                draw_regression_1d(ui, dataset, snap, name, self.plot_scale());
             }
             _ => {}
         }
@@ -495,7 +509,7 @@ impl GuiApp {
         name: &str,
     ) {
         ui.heading(format!("Single-layer — {} ({} neurons)", name, h.neuron_histories.len()));
-        draw_loss_curve_single_layer(ui, h, name);
+        draw_loss_curve_single_layer(ui, h, name, self.plot_scale());
         ui.separator();
 
         let n_neurons = h.neuron_histories.len();
@@ -517,7 +531,7 @@ impl GuiApp {
 
         let ni = self.ui_state.sl_neuron.min(n_neurons - 1);
         ui.heading(format!("Weights — neuron {}", ni));
-        draw_weight_sparklines_single_layer(ui, h, ni, name);
+        draw_weight_sparklines_single_layer(ui, h, ni, name, self.plot_scale());
 
         let max_epoch = h.neuron_histories[ni].snapshots.len().saturating_sub(1);
         self.ui_state.epoch_slider = self.ui_state.epoch_slider.min(max_epoch);
@@ -560,7 +574,7 @@ impl GuiApp {
                     draw_mlp_boundary_2d(
                         ui, ctx, &inputs, &targets, &fake_snap,
                         &ActivationName::Identity, 0.5,
-                        &format!("{}_sl", name),
+                        &format!("{}_sl", name), self.plot_scale(),
                     );
                 } else {
                     // Binary: reuse the original single-perceptron scatter.
@@ -570,7 +584,7 @@ impl GuiApp {
                         .map(|(inp, tgt)| (inp.clone(), tgt.first().copied().unwrap_or(0.0)))
                         .collect();
                     ui.heading("Decision boundary");
-                    draw_scatter_2d_boundary(ui, &neuron_dataset, snap, name);
+                    draw_scatter_2d_boundary(ui, &neuron_dataset, snap, name, self.plot_scale());
                 }
             }
 
@@ -632,7 +646,7 @@ impl GuiApp {
 
         if h.input_dim == 2 {
             // ── 2D decision boundary ──────────────────────────────────────────
-            draw_loss_curve_mlp(ui, h, name);
+            draw_loss_curve_mlp(ui, h, name, self.plot_scale());
             ui.separator();
             let max_epoch = h.snapshots.len().saturating_sub(1);
             self.ui_state.epoch_slider = self.ui_state.epoch_slider.min(max_epoch);
@@ -643,14 +657,14 @@ impl GuiApp {
 
             if let Some(snap) = h.snapshots.get(self.ui_state.epoch_slider) {
                 if let Some((ref inputs, ref targets)) = full_data {
-                    draw_mlp_boundary_2d(ui, ctx, inputs, targets, snap, &h.activation, 0.5, name);
+                    draw_mlp_boundary_2d(ui, ctx, inputs, targets, snap, &h.activation, 0.5, name, self.plot_scale());
                 }
                 ui.separator();
                 ui.heading(format!("Epoch {} — MSE = {:.6}", snap.epoch, snap.loss));
             }
         } else if h.input_dim == 1 {
             // ── 1D regression line ────────────────────────────────────────────
-            draw_loss_curve_mlp(ui, h, name);
+            draw_loss_curve_mlp(ui, h, name, self.plot_scale());
             ui.separator();
             let max_epoch = h.snapshots.len().saturating_sub(1);
             self.ui_state.epoch_slider = self.ui_state.epoch_slider.min(max_epoch);
@@ -662,13 +676,13 @@ impl GuiApp {
             if let (Some(snap), Some((inputs, targets))) =
                 (h.snapshots.get(self.ui_state.epoch_slider), full_data.as_ref())
             {
-                draw_mlp_regression_1d(ui, inputs, targets, snap, &h.activation, name);
+                draw_mlp_regression_1d(ui, inputs, targets, snap, &h.activation, name, self.plot_scale());
                 ui.separator();
                 ui.heading(format!("Epoch {} — MSE = {:.6}", snap.epoch, snap.loss));
             }
         } else {
             // ── High-dim: per-output loss curve + sparklines + slider ─────────
-            draw_loss_curve_mlp_multi(ui, h, name);
+            draw_loss_curve_mlp_multi(ui, h, name, self.plot_scale());
             ui.separator();
             if n_layers > 0 {
                 self.draw_mlp_sparklines(ui, h, name);
@@ -813,7 +827,7 @@ impl GuiApp {
                 }
             });
         }
-        draw_weight_sparklines_mlp(ui, h, li, self.ui_state.mlp_neuron, name);
+        draw_weight_sparklines_mlp(ui, h, li, self.ui_state.mlp_neuron, name, self.plot_scale());
     }
 
     // ── Snapshot detail (single-perceptron) ───────────────────────────────────

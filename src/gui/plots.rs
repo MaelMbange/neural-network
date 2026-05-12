@@ -8,7 +8,7 @@ use crate::history::types::{
 
 // ── Loss curve ────────────────────────────────────────────────────────────────
 
-pub fn draw_loss_curve(ui: &mut Ui, history: &History, id_salt: &str) {
+pub fn draw_loss_curve(ui: &mut Ui, history: &History, id_salt: &str, scale: f32) {
     let points: PlotPoints = history
         .snapshots
         .iter()
@@ -17,13 +17,13 @@ pub fn draw_loss_curve(ui: &mut Ui, history: &History, id_salt: &str) {
 
     Plot::new(format!("loss_curve_{}", id_salt))
         .legend(Legend::default())
-        .height(200.0)
+        .height(200.0 * scale)
         .show(ui, |plot_ui| {
             plot_ui.line(Line::new(points).name("loss"));
         });
 }
 
-pub fn draw_loss_curve_mlp(ui: &mut Ui, history: &MlpHistory, id_salt: &str) {
+pub fn draw_loss_curve_mlp(ui: &mut Ui, history: &MlpHistory, id_salt: &str, scale: f32) {
     let points: PlotPoints = history
         .snapshots
         .iter()
@@ -32,7 +32,7 @@ pub fn draw_loss_curve_mlp(ui: &mut Ui, history: &MlpHistory, id_salt: &str) {
 
     Plot::new(format!("loss_curve_mlp_{}", id_salt))
         .legend(Legend::default())
-        .height(200.0)
+        .height(200.0 * scale)
         .show(ui, |plot_ui| {
             plot_ui.line(Line::new(points).name("MSE"));
         });
@@ -40,15 +40,15 @@ pub fn draw_loss_curve_mlp(ui: &mut Ui, history: &MlpHistory, id_salt: &str) {
 
 /// Multi-series loss: one line per output neuron + one thicker total-MSE line.
 /// Falls back to the single-line version when there is only 1 output.
-pub fn draw_loss_curve_mlp_multi(ui: &mut Ui, history: &MlpHistory, id_salt: &str) {
+pub fn draw_loss_curve_mlp_multi(ui: &mut Ui, history: &MlpHistory, id_salt: &str, scale: f32) {
     let n_out = history.snapshots.first().map(|s| s.per_output_mse.len()).unwrap_or(0);
     if n_out <= 1 {
-        return draw_loss_curve_mlp(ui, history, id_salt);
+        return draw_loss_curve_mlp(ui, history, id_salt, scale);
     }
 
     Plot::new(format!("loss_curve_mlp_multi_{}", id_salt))
         .legend(Legend::default())
-        .height(200.0)
+        .height(200.0 * scale)
         .show(ui, |plot_ui| {
             // Total MSE (bold)
             let total: PlotPoints = history
@@ -66,10 +66,10 @@ pub fn draw_loss_curve_mlp_multi(ui: &mut Ui, history: &MlpHistory, id_salt: &st
         });
 }
 
-pub fn draw_loss_curve_single_layer(ui: &mut Ui, history: &SingleLayerHistory, id_salt: &str) {
+pub fn draw_loss_curve_single_layer(ui: &mut Ui, history: &SingleLayerHistory, id_salt: &str, scale: f32) {
     Plot::new(format!("loss_sl_{}", id_salt))
         .legend(Legend::default())
-        .height(200.0)
+        .height(200.0 * scale)
         .show(ui, |plot_ui| {
             for nh in &history.neuron_histories {
                 let pts: PlotPoints = nh
@@ -104,6 +104,7 @@ pub fn draw_scatter_2d_boundary(
     dataset: &[(Vec<f64>, f64)],
     snapshot: &EpochSnapshot,
     id_salt: &str,
+    scale: f32,
 ) {
     let pos_pts: PlotPoints = dataset
         .iter()
@@ -137,7 +138,7 @@ pub fn draw_scatter_2d_boundary(
     Plot::new(format!("scatter_2d_{}", id_salt))
         .legend(Legend::default())
         .data_aspect(1.0)
-        .height(280.0)
+        .height(280.0 * scale)
         .include_x(x_min)
         .include_x(x_max)
         .include_y(y_min)
@@ -197,6 +198,7 @@ pub fn draw_mlp_boundary_2d(
     activation: &ActivationName,
     threshold: f64,
     id_salt: &str,
+    scale: f32,
 ) {
     const GRID: usize = 64;
 
@@ -269,7 +271,7 @@ pub fn draw_mlp_boundary_2d(
     Plot::new(format!("mlp_boundary_plot_{}", id_salt))
         .legend(Legend::default())
         .data_aspect(1.0)
-        .height(300.0)
+        .height(300.0 * scale)
         .include_x(x_min).include_x(x_max)
         .include_y(y_min).include_y(y_max)
         .show(ui, |plot_ui| {
@@ -309,6 +311,7 @@ pub fn draw_mlp_regression_1d(
     snapshot: &MlpEpochSnapshot,
     activation: &ActivationName,
     id_salt: &str,
+    scale: f32,
 ) {
     let scatter: PlotPoints = inputs
         .iter()
@@ -335,7 +338,7 @@ pub fn draw_mlp_regression_1d(
 
     Plot::new(format!("mlp_reg1d_{}", id_salt))
         .legend(Legend::default())
-        .height(280.0)
+        .height(280.0 * scale)
         .include_x(x_min).include_x(x_max)
         .include_y(y_min).include_y(y_max)
         .show(ui, |plot_ui| {
@@ -361,6 +364,7 @@ pub fn draw_regression_1d(
     dataset: &[(Vec<f64>, f64)],
     snapshot: &EpochSnapshot,
     id_salt: &str,
+    scale: f32,
 ) {
     let scatter: PlotPoints = dataset
         .iter()
@@ -387,7 +391,7 @@ pub fn draw_regression_1d(
 
     Plot::new(format!("regression_1d_{}", id_salt))
         .legend(Legend::default())
-        .height(280.0)
+        .height(280.0 * scale)
         .include_x(x_min)
         .include_x(x_max)
         .include_y(y_min)
@@ -480,6 +484,7 @@ pub fn draw_weight_sparklines_mlp(
     layer_idx: usize,
     neuron_idx: usize,
     id_salt: &str,
+    scale: f32,
 ) {
     let ok = history
         .snapshots
@@ -494,7 +499,7 @@ pub fn draw_weight_sparklines_mlp(
 
     let n_weights = history.snapshots[0].layers[layer_idx].neurons[neuron_idx].weights.len();
     // More weights → taller plot so curves don't crowd each other.
-    let plot_height = (160.0 + (n_weights.saturating_sub(4) as f32) * 4.0).min(320.0);
+    let plot_height = (160.0 + (n_weights.saturating_sub(4) as f32) * 4.0).min(320.0) * scale;
     let show_legend = n_weights <= LEGEND_LINE_LIMIT;
 
     if !show_legend {
@@ -537,6 +542,7 @@ pub fn draw_weight_sparklines_single_layer(
     history: &SingleLayerHistory,
     neuron_idx: usize,
     id_salt: &str,
+    scale: f32,
 ) {
     let nh = match history.neuron_histories.get(neuron_idx) {
         Some(h) => h,
@@ -546,7 +552,7 @@ pub fn draw_weight_sparklines_single_layer(
         }
     };
     let n_weights = nh.snapshots.first().map(|s| s.neuron.weights.len()).unwrap_or(0);
-    let plot_height = (160.0 + (n_weights.saturating_sub(4) as f32) * 4.0).min(320.0);
+    let plot_height = (160.0 + (n_weights.saturating_sub(4) as f32) * 4.0).min(320.0) * scale;
     let show_legend = n_weights <= LEGEND_LINE_LIMIT;
 
     if !show_legend {
