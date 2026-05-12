@@ -1,4 +1,4 @@
-use crate::{activation::Activation, perceptron::Perceptron, trainer::Train};
+use crate::{activation::Activation, perceptron::Perceptron, train::Train};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Linear {

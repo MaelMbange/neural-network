@@ -1,26 +1,29 @@
-use rna::{
-    activation::sigmoid::Sigmoid,
-    layer::{Layer, MLP},
-};
+use rna::{activation::sigmoid::Sigmoid, layer::MLP};
 
 fn main() {
-    let mut mlp = MLP::<Sigmoid> {
-        layers: vec![
-            Layer::<Sigmoid>::new_with_weights(
-                2,
-                3,
-                vec![vec![0.1, 0.15, 0.05], vec![0.12, 0.18, 0.08]],
-            ),
-            Layer::<Sigmoid>::new_with_weights(
-                3,
-                2,
-                vec![vec![0.1, 0.14], vec![0.125, 0.21], vec![0.13, 0.07]],
-            ),
+    let (inputs, outputs) = (
+        vec![
+            vec![0.0, 0.0],
+            vec![0.0, 1.0],
+            vec![1.0, 0.0],
+            vec![1.0, 1.0],
         ],
-        tolerance: 0.01,
-    };
+        vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]],
+    );
 
-    println!("Avant entraînement : {:?}", mlp.forward(&[0.9, 0.1, 0.9]));
-    mlp.train(&[vec![0.9, 0.1, 0.9]], &[vec![0.1, 0.9, 0.9]], 0.5, Some(1));
-    println!("Après entraînement : {:?}", mlp.forward(&[0.9, 0.1, 0.9]));
+    let mut mlp = MLP::<Sigmoid>::new(&[2, 1], 2, 0.001);
+
+    println!("Avant entraînement : {:#?}", mlp);
+    mlp.train(&inputs, &outputs, 0.8, Some(2000));
+    println!("Après entraînement : {:#?}", mlp);
+    println!("{:#?}", mlp);
+
+    println!("Classification :");
+    for (input, output) in inputs.iter().zip(outputs.iter()) {
+        let result = mlp.classify_binary(input, 0.5, 0.0, 1.0);
+        println!(
+            "Input: {:?} => Output: {:?} (Expected: {:?})",
+            input, result, output
+        );
+    }
 }

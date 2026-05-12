@@ -15,16 +15,16 @@ pub struct Layer<A: Activation + Derivative> {
 }
 
 impl<A: Activation + Derivative> Layer<A> {
-    pub fn new(neuron_count: usize, input_count: usize) -> Self {
+    pub fn new(neuron_count: usize, num_inputs: usize) -> Self {
         let neurons = (0..neuron_count)
-            .map(|_| Perceptron::new_with_random_range(input_count, 0.0, -1.0..=1.0))
+            .map(|_| Perceptron::new_with_random_range(num_inputs, 0.0, -1.0..=1.0))
             .collect();
 
         Self {
             neurons,
             potentials: vec![0.0; neuron_count],
             outputs: vec![0.0; neuron_count],
-            inputs: vec![0.0; input_count],
+            inputs: vec![0.0; num_inputs],
             deltas: vec![0.0; neuron_count],
         }
     }
@@ -68,9 +68,26 @@ impl<A: Activation + Derivative> Layer<A> {
 pub struct MLP<A: Activation + Derivative> {
     pub layers: Vec<Layer<A>>,
     pub tolerance: f64,
+    pub epoch: usize,
 }
 
 impl<A: Activation + Derivative> MLP<A> {
+    pub fn new(layers_sizes: &[usize], input_size: usize, tolerance: f64) -> Self {
+        let mut layers = Vec::new();
+        let mut current_input_size = input_size;
+
+        for &size in layers_sizes {
+            layers.push(Layer::<A>::new(size, current_input_size));
+            current_input_size = size;
+        }
+
+        Self {
+            layers,
+            tolerance,
+            epoch: 0,
+        }
+    }
+
     pub fn forward(&mut self, inputs: &[f64]) -> Vec<f64> {
         let mut current_inputs = inputs.to_vec();
 
@@ -88,7 +105,7 @@ impl<A: Activation + Derivative> MLP<A> {
         _learning_rate: f64,
         _epochs: Option<usize>,
     ) {
-        let mut epoch = 0;
+        self.epoch = 0;
 
         loop {
             let mut squarred_error_sum = 0.0;
@@ -154,12 +171,28 @@ impl<A: Activation + Derivative> MLP<A> {
                 break;
             }
 
-            epoch += 1;
+            self.epoch += 1;
             if let Some(max) = _epochs {
-                if epoch + 1 >= max {
+                if self.epoch + 1 >= max {
                     break;
                 }
             }
         }
+    }
+
+    pub fn classify_binary(&mut self, inputs: &[f64], threshold: f64, low: f64, high: f64) -> f64 {
+        let y = self.forward(inputs);
+        assert_eq!(y.len(), 1, "classify_binary attend une unique sortie");
+        if y[0] >= threshold { high } else { low }
+    }
+
+    pub fn classify_argmax(&mut self, inputs: &[f64]) -> usize {
+        let y = self.forward(inputs);
+        assert!(!y.is_empty(), "classify_argmax attend au moins une sortie");
+        y.iter()
+            .enumerate()
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .map(|(i, _)| i)
+            .unwrap()
     }
 }

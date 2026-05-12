@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use rna::{
     activation::step::Step,
     perceptron::Perceptron,
-    trainer::{Train, linear::Linear},
+    train::{Train, linear::Linear},
 };
 
 fn main() {

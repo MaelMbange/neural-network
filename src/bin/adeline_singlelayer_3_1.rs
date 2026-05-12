@@ -4,7 +4,7 @@ use rna::{
     activation::identity::Identity,
     csv_reader::load_dataset_multi,
     perceptron::Perceptron,
-    trainer::{ClassificationStop, Train, adeline::Adeline},
+    train::{ClassificationStop, Train, adeline::Adeline},
 };
 
 #[derive(Debug)]

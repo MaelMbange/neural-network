@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use rna::{
     activation::identity::Identity,
     perceptron::Perceptron,
-    trainer::{Train, adeline::Adeline},
+    train::{Train, adeline::Adeline},
 };
 
 fn main() {
