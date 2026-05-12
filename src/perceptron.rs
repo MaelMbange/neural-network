@@ -12,6 +12,14 @@ pub struct Perceptron<A: Activation> {
 }
 
 impl<A: Activation> Perceptron<A> {
+    pub fn new(weights: Vec<f64>, bias: f64) -> Self {
+        Self {
+            weights,
+            bias,
+            activation: PhantomData,
+        }
+    }
+
     pub fn new_with_random_range<R: SampleRange<f64> + Clone>(
         input_size: usize,
         bias: f64,
@@ -21,14 +29,6 @@ impl<A: Activation> Perceptron<A> {
             .map(|_| random_range(weight_range.clone()))
             .collect();
 
-        Self {
-            weights,
-            bias,
-            activation: PhantomData,
-        }
-    }
-
-    pub fn new(weights: Vec<f64>, bias: f64) -> Self {
         Self {
             weights,
             bias,
