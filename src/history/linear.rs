@@ -76,6 +76,7 @@ impl LinearHistory {
             dataset_name: dataset_name.into(),
             learning_rate: self.learning_rate,
             tolerance: 0.0,
+            max_epochs: epochs.unwrap_or(usize::MAX),
             total_epochs,
             snapshots,
         }

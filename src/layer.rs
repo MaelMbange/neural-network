@@ -74,6 +74,7 @@ impl<A: Activation + Derivative> Layer<A> {
 pub struct MLP<A: Activation + Derivative> {
     pub layers: Vec<Layer<A>>,
     pub epoch: usize,
+    pub mean_squared_error: f64,
 }
 
 impl<A: Activation + Derivative> MLP<A> {
@@ -94,7 +95,11 @@ impl<A: Activation + Derivative> MLP<A> {
             current_input_size = size;
         }
 
-        Self { layers, epoch: 0 }
+        Self {
+            layers,
+            epoch: 0,
+            mean_squared_error: 0.0,
+        }
     }
 
     pub fn forward(&mut self, inputs: &[f64]) -> Vec<f64> {
@@ -177,6 +182,7 @@ impl<A: Activation + Derivative> MLP<A> {
             }
 
             // on verifie si l'erreur quadratique moyenne est inférieure ou égale à la tolérance pour arrêter l'entraînement
+            self.mean_squared_error = squarred_error_sum / _inputs.len() as f64;
             if squarred_error_sum / _inputs.len() as f64 <= _tolerance {
                 break;
             }

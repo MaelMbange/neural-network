@@ -102,6 +102,7 @@ pub fn train_single_layer_with_history(
         dataset_name: name,
         learning_rate,
         tolerance,
+        max_epochs: epochs.unwrap_or(usize::MAX),
         neuron_histories,
     }
 }

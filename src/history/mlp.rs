@@ -1,15 +1,19 @@
 use rna::activation::{Activation, Derivative};
 use rna::layer::MLP;
 
-use crate::history::types::{LayerSnapshot, MlpEpochSnapshot, MlpHistory, NeuronSnapshot};
+use crate::history::types::{
+    ActivationName, LayerSnapshot, MlpEpochSnapshot, MlpHistory, NeuronSnapshot,
+};
 
-/// Mirrors `MLP::train` (the full backprop loop in `src/layer.rs`) and captures
-/// a snapshot of every layer's weights and deltas after each epoch.
+/// Mirrors `MLP::train` and captures a per-epoch snapshot of every layer's
+/// weights, deltas, and outputs.
 ///
-/// The snapshot also records per-layer outputs evaluated on **all** training inputs
-/// (collected during the forward pass of that epoch).
+/// New parameters vs the original:
+///   `activation_name` — stored in `MlpHistory` so the GUI can replay forward
+///                       passes from snapshots without the live model.
+///   `input_dim`       — also stored for boundary-grid rendering.
 ///
-/// `verbose`: if true, prints epoch index and MSE to stdout after each epoch.
+/// `verbose`: if true, prints epoch index and MSE to stdout.
 pub fn train_mlp_with_history<A: Activation + Derivative>(
     mlp: &mut MLP<A>,
     inputs: &[Vec<f64>],
@@ -18,6 +22,8 @@ pub fn train_mlp_with_history<A: Activation + Derivative>(
     tolerance: f64,
     epochs: Option<usize>,
     dataset_name: impl Into<String>,
+    activation_name: ActivationName,
+    input_dim: usize,
     verbose: bool,
 ) -> MlpHistory {
     let mut snapshots = Vec::new();
@@ -25,17 +31,12 @@ pub fn train_mlp_with_history<A: Activation + Derivative>(
 
     loop {
         let mut squarred_error_sum = 0.0;
-
-        // We will accumulate per-layer outputs across all samples for the snapshot.
-        // outputs_per_layer[layer_idx] = Vec<output_vec_for_each_sample>
         let num_layers = mlp.layers.len();
         let mut outputs_per_layer: Vec<Vec<Vec<f64>>> = vec![Vec::new(); num_layers];
 
         for (inp, exp) in inputs.iter().zip(expected.iter()) {
-            // Forward pass
             let output = mlp.forward(inp);
 
-            // Record per-layer outputs for snapshot
             for (li, layer) in mlp.layers.iter().enumerate() {
                 outputs_per_layer[li].push(layer.outputs.clone());
             }
@@ -54,7 +55,6 @@ pub fn train_mlp_with_history<A: Activation + Derivative>(
                 }
             }
 
-            // Backprop through hidden layers
             for i in (0..last_idx).rev() {
                 let (current, next) = mlp.layers.split_at_mut(i + 1);
                 let current_layer = &mut current[i];
@@ -74,7 +74,6 @@ pub fn train_mlp_with_history<A: Activation + Derivative>(
                 }
             }
 
-            // Weight update
             for layer in mlp.layers.iter_mut() {
                 let layer_inputs = layer.inputs.clone();
                 for (neuron, delta) in layer.neurons.iter_mut().zip(layer.deltas.iter()) {
@@ -88,7 +87,6 @@ pub fn train_mlp_with_history<A: Activation + Derivative>(
 
         let mse = squarred_error_sum / inputs.len() as f64;
 
-        // Build layer snapshots
         let layer_snaps: Vec<LayerSnapshot> = mlp
             .layers
             .iter()
@@ -107,17 +105,10 @@ pub fn train_mlp_with_history<A: Activation + Derivative>(
             })
             .collect();
 
-        let snap = MlpEpochSnapshot {
-            epoch: mlp.epoch,
-            layers: layer_snaps,
-            loss: mse,
-        };
+        let snap = MlpEpochSnapshot { epoch: mlp.epoch, layers: layer_snaps, loss: mse };
 
         if verbose {
-            println!(
-                "[mlp] epoch {:>5}  MSE = {:.6}",
-                snap.epoch, snap.loss
-            );
+            println!("[mlp] epoch {:>5}  MSE = {:.6}", snap.epoch, snap.loss);
         }
 
         snapshots.push(snap);
@@ -139,7 +130,10 @@ pub fn train_mlp_with_history<A: Activation + Derivative>(
         dataset_name: dataset_name.into(),
         learning_rate,
         tolerance,
+        max_epochs: epochs.unwrap_or(usize::MAX),
         total_epochs,
+        activation: activation_name,
+        input_dim,
         snapshots,
     }
 }

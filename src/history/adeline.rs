@@ -122,6 +122,7 @@ impl AdelineHistory {
             dataset_name: dataset_name.into(),
             learning_rate: self.learning_rate,
             tolerance: self.tolerance,
+            max_epochs: epochs.unwrap_or(usize::MAX),
             total_epochs,
             snapshots,
         }

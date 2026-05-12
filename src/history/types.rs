@@ -1,5 +1,52 @@
 use serde::Serialize;
 
+// ── Activation name ───────────────────────────────────────────────────────────
+
+/// Which activation function was used — stored in MlpHistory so the GUI can
+/// run a standalone forward pass through snapshot weights without the live model.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub enum ActivationName {
+    Identity,
+    Sigmoid,
+    Tanh,
+}
+
+impl ActivationName {
+    pub fn apply(&self, z: f64) -> f64 {
+        match self {
+            ActivationName::Identity => z,
+            ActivationName::Sigmoid => 1.0 / (1.0 + (-z).exp()),
+            ActivationName::Tanh => z.tanh(),
+        }
+    }
+}
+
+/// Run a full forward pass through snapshot layer weights without needing the
+/// live MLP model. Used for the decision-boundary grid rendering.
+pub fn forward_snapshot(
+    layers: &[LayerSnapshot],
+    input: &[f64],
+    activation: &ActivationName,
+) -> Vec<f64> {
+    let mut current = input.to_vec();
+    for layer in layers {
+        let mut next = Vec::with_capacity(layer.neurons.len());
+        for neuron in &layer.neurons {
+            let z: f64 = current
+                .iter()
+                .zip(neuron.weights.iter())
+                .map(|(x, w)| x * w)
+                .sum::<f64>()
+                + neuron.bias;
+            next.push(activation.apply(z));
+        }
+        current = next;
+    }
+    current
+}
+
+// ── Single-perceptron snapshot ────────────────────────────────────────────────
+
 #[derive(Debug, Clone, Serialize)]
 pub struct NeuronSnapshot {
     pub weights: Vec<f64>,
@@ -26,6 +73,8 @@ pub struct History {
     pub dataset_name: String,
     pub learning_rate: f64,
     pub tolerance: f64,
+    /// Epoch cap that was passed to training (usize::MAX if no cap).
+    pub max_epochs: usize,
     pub total_epochs: usize,
     pub snapshots: Vec<EpochSnapshot>,
 }
@@ -54,7 +103,13 @@ pub struct MlpHistory {
     pub dataset_name: String,
     pub learning_rate: f64,
     pub tolerance: f64,
+    /// Epoch cap that was passed to training.
+    pub max_epochs: usize,
     pub total_epochs: usize,
+    /// Activation used for ALL layers — needed to replay forward passes from snapshots.
+    pub activation: ActivationName,
+    /// Number of inputs to the first layer — needed for boundary grid rendering.
+    pub input_dim: usize,
     pub snapshots: Vec<MlpEpochSnapshot>,
 }
 
@@ -72,5 +127,7 @@ pub struct SingleLayerHistory {
     pub dataset_name: String,
     pub learning_rate: f64,
     pub tolerance: f64,
+    /// Epoch cap that was passed to training.
+    pub max_epochs: usize,
     pub neuron_histories: Vec<NeuronTraceHistory>,
 }
