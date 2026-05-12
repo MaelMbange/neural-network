@@ -23,7 +23,7 @@ impl<T: Train> SingleLayer<T> {
         }
     }
 
-    pub fn forward(&self, inputs: &[f64]) -> Vec<f64> {
+    pub fn _forward(&self, inputs: &[f64]) -> Vec<f64> {
         self.neurons
             .iter()
             .map(|neuron| neuron.forward(inputs))

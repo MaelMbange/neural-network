@@ -25,6 +25,7 @@ impl<A: Activation + Derivative> Layer<A> {
             potentials: vec![0.0; neuron_count],
             outputs: vec![0.0; neuron_count],
             inputs: vec![0.0; input_count],
+            deltas: vec![0.0; neuron_count],
         }
     }
 
@@ -48,6 +49,7 @@ impl<A: Activation + Derivative> Layer<A> {
             potentials: vec![0.0; neuron_count],
             outputs: vec![0.0; neuron_count],
             inputs: vec![0.0; input_count],
+            deltas: vec![0.0; neuron_count],
         }
     }
 
@@ -58,7 +60,6 @@ impl<A: Activation + Derivative> Layer<A> {
             self.potentials[i] = neuron.potential(inputs);
             self.outputs[i] = neuron.forward(inputs);
         }
-
         self.outputs.clone()
     }
 }
@@ -66,6 +67,7 @@ impl<A: Activation + Derivative> Layer<A> {
 #[derive(Debug, Clone)]
 pub struct MLP<A: Activation + Derivative> {
     pub layers: Vec<Layer<A>>,
+    pub tolerance: f64,
 }
 
 impl<A: Activation + Derivative> MLP<A> {
@@ -86,12 +88,71 @@ impl<A: Activation + Derivative> MLP<A> {
         _learning_rate: f64,
         _epochs: Option<usize>,
     ) {
-        let epoch = 0;
+        let mut epoch = 0;
 
         loop {
-            let mut delta_bias = 0.0;
-            let mut delta_weights = vec![0.0; perceptron.weights.len()];
             let mut squarred_error_sum = 0.0;
+
+            for (inputs, expected) in _inputs.iter().zip(_expected.iter()) {
+                //etape 1 : propagation avant pour calculer les sorties et les potentiels de chaque neurone
+                let output = self.forward(inputs);
+                let last = self.layers.iter_mut().last().unwrap();
+
+                //etape 2a: calcul du signal d'erreur le la couche de sortie
+                for ((o, e), (delta, potential)) in output
+                    .iter()
+                    .zip(expected.iter())
+                    .zip(last.deltas.iter_mut().zip(last.potentials.iter()))
+                {
+                    let error = e - o;
+                    *delta = error * A::derivative(*potential); // signal d'erreur de la couche de sortie pour chaque neurone
+                    squarred_error_sum += 0.5 * error * error; // on accumule l'erreur quadratique pour cette époque
+                }
+
+                //etape 2b: calcul du signal d'erreur pour les couches cachées, en remontant de la couche de sortie vers la couche d'entrée
+                // mr, si vous lisez ceci, sachez que j'ai eu envie de me tirer une balle en écrivant cette partie.
+                // (╯°□°）╯︵ ┻━┻
+                for i in (0..self.layers.len() - 1).rev() {
+                    let (current, next) = self.layers.split_at_mut(i + 1);
+                    let current_layer = &mut current[i];
+                    let next_layer = &next[0];
+
+                    // pour chaque neurone on recupere son vecteur delta et son potentiel
+                    for (j, (delta, potential)) in current_layer
+                        .deltas
+                        .iter_mut()
+                        .zip(current_layer.potentials.iter())
+                        .enumerate()
+                    {
+                        //formule: delta(C) = derivative(k_c) * sum(w_s * delta(S))
+                        let mut error_sum = 0.0;
+                        for (k, next_neuron) in next_layer.neurons.iter().enumerate() {
+                            error_sum += next_neuron.weights[j] * next_layer.deltas[k];
+                            // on multiplie le poids par le signal d'erreur de la couche suivante,
+                            // ici: sum(w_s * delta(S))
+                        }
+                        *delta = error_sum * A::derivative(*potential); // signal d'erreur de la couche cachée pour chaque neurone
+                    }
+                }
+
+                //etape 3: Correction des poids synaptique de chaque couches (a+b)
+                // la partie simple
+                for layer in self.layers.iter_mut() {
+                    let layer_inputs = layer.inputs.clone();
+                    for (neuron, delta) in layer.neurons.iter_mut().zip(layer.deltas.iter()) {
+                        // on applique la formule: wsc(t+1) = wsc(t) + learning_rate * delta * y (y etant l'entrée du neurone)
+                        for (w, x) in neuron.weights.iter_mut().zip(layer_inputs.iter()) {
+                            *w += _learning_rate * delta * x; // correction du poids synaptique : w = w + learning_rate * delta * input
+                        }
+                        neuron.bias += _learning_rate * delta; // correction du biais : b = b + learning_rate * delta
+                    }
+                }
+            }
+
+            // on verifie si l'erreur quadratique moyenne est inférieure ou égale à la tolérance pour arrêter l'entraînement
+            if squarred_error_sum / _inputs.len() as f64 <= self.tolerance {
+                break;
+            }
 
             epoch += 1;
             if let Some(max) = _epochs {

@@ -23,14 +23,14 @@ impl<T: Train> SingleLayer<T> {
         }
     }
 
-    pub fn forward(&self, inputs: &[f64]) -> Vec<f64> {
+    pub fn _forward(&self, inputs: &[f64]) -> Vec<f64> {
         self.neurons
             .iter()
             .map(|neuron| neuron.forward(inputs))
             .collect()
     }
 
-    pub fn classify(&self, inputs: &[f64], threshold: f64, values: (f64, f64)) -> Vec<f64> {
+    pub fn _classify(&self, inputs: &[f64], threshold: f64, values: (f64, f64)) -> Vec<f64> {
         self.neurons
             .iter()
             .map(|neuron| self.trainer.classify(neuron, inputs, threshold, values))
@@ -39,7 +39,7 @@ impl<T: Train> SingleLayer<T> {
 
     pub fn train(&mut self, inputs: &[Vec<f64>], outputs: &[Vec<f64>], epochs: Option<usize>) {
         // on vefifie juste que les sorties attendues ont la même longueur que le nombre de neurones dans la couche
-        for (i, output) in outputs.iter().enumerate() {
+        for (_i, output) in outputs.iter().enumerate() {
             if output.len() != self.neurons.len() {
                 panic!("Output length must match the number of neurons in the layer");
             }
