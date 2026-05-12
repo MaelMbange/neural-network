@@ -154,7 +154,7 @@ impl HyperParams {
                 mlp_hidden_sizes: vec![],
                 mlp_activation: MlpActivation::Sigmoid,
             },
-            "adeline_singlelayer_3_5" => Self {
+            "adaline_singlelayer_3_5" => Self {
                 learning_rate: 0.001,
                 tolerance: 0.05,
                 max_epochs: 1000,
@@ -165,7 +165,7 @@ impl HyperParams {
                 mlp_hidden_sizes: vec![],
                 mlp_activation: MlpActivation::Sigmoid,
             },
-            "adeline_singlelayer_3_1" => Self {
+            "adaline_singlelayer_3_1" => Self {
                 learning_rate: 0.001,
                 tolerance: 0.01,
                 max_epochs: 300,

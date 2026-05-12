@@ -193,7 +193,7 @@ pub fn draw_mlp_boundary_2d(
             let class_idx = if multi_class {
                 out.iter()
                     .enumerate()
-                    .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                    .max_by(|a, b| a.1.total_cmp(b.1))
                     .map(|(i, _)| i)
                     .unwrap_or(0)
             } else {
@@ -218,12 +218,12 @@ pub fn draw_mlp_boundary_2d(
         if inp.len() < 2 { continue; }
         let out = forward_snapshot(&snapshot.layers, inp, activation);
         let pred = if multi_class {
-            out.iter().enumerate().max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).map(|(i,_)|i).unwrap_or(0)
+            out.iter().enumerate().max_by(|a, b| a.1.total_cmp(b.1)).map(|(i,_)|i).unwrap_or(0)
         } else {
             if out.first().copied().unwrap_or(0.0) >= threshold { 1 } else { 0 }
         };
         let truth = if multi_class {
-            tgt.iter().enumerate().max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).map(|(i,_)|i).unwrap_or(0)
+            tgt.iter().enumerate().max_by(|a, b| a.1.total_cmp(b.1)).map(|(i,_)|i).unwrap_or(0)
         } else {
             if tgt.first().copied().unwrap_or(0.0) > 0.0 { 1 } else { 0 }
         };
@@ -380,6 +380,9 @@ pub fn draw_regression_1d(
 
 // ── Weight sparklines ─────────────────────────────────────────────────────────
 
+/// Threshold above which the per-line legend is hidden to avoid overflow.
+const LEGEND_LINE_LIMIT: usize = 8;
+
 pub fn draw_weight_sparklines_mlp(
     ui: &mut Ui,
     history: &MlpHistory,
@@ -399,30 +402,43 @@ pub fn draw_weight_sparklines_mlp(
     }
 
     let n_weights = history.snapshots[0].layers[layer_idx].neurons[neuron_idx].weights.len();
+    // More weights → taller plot so curves don't crowd each other.
+    let plot_height = (160.0 + (n_weights.saturating_sub(4) as f32) * 4.0).min(320.0);
+    let show_legend = n_weights <= LEGEND_LINE_LIMIT;
 
-    Plot::new(format!("sparkline_mlp_l{}_n{}_{}", layer_idx, neuron_idx, id_salt))
-        .legend(Legend::default())
-        .height(160.0)
-        .show(ui, |plot_ui| {
-            for wi in 0..n_weights {
-                let pts: PlotPoints = history
-                    .snapshots
-                    .iter()
-                    .map(|s| [s.epoch as f64, s.layers[layer_idx].neurons[neuron_idx].weights[wi]])
-                    .collect();
-                plot_ui.line(Line::new(pts).name(format!("w{}", wi)));
-            }
-            let bias_pts: PlotPoints = history
+    if !show_legend {
+        ui.label(format!(
+            "({} weights — legend hidden to prevent overflow; colors cycle w0..w{})",
+            n_weights,
+            n_weights - 1
+        ));
+    }
+
+    let mut p = Plot::new(format!("sparkline_mlp_l{}_n{}_{}", layer_idx, neuron_idx, id_salt))
+        .height(plot_height);
+    if show_legend {
+        p = p.legend(Legend::default());
+    }
+    p.show(ui, |plot_ui| {
+        for wi in 0..n_weights {
+            let pts: PlotPoints = history
                 .snapshots
                 .iter()
-                .map(|s| [s.epoch as f64, s.layers[layer_idx].neurons[neuron_idx].bias])
+                .map(|s| [s.epoch as f64, s.layers[layer_idx].neurons[neuron_idx].weights[wi]])
                 .collect();
-            plot_ui.line(
-                Line::new(bias_pts)
-                    .name("bias")
-                    .color(egui::Color32::from_rgb(180, 80, 200)),
-            );
-        });
+            let line = Line::new(pts);
+            let line = if show_legend { line.name(format!("w{}", wi)) } else { line };
+            plot_ui.line(line);
+        }
+        let bias_pts: PlotPoints = history
+            .snapshots
+            .iter()
+            .map(|s| [s.epoch as f64, s.layers[layer_idx].neurons[neuron_idx].bias])
+            .collect();
+        let bias_line = Line::new(bias_pts).color(egui::Color32::from_rgb(180, 80, 200));
+        let bias_line = if show_legend { bias_line.name("bias") } else { bias_line };
+        plot_ui.line(bias_line);
+    });
 }
 
 pub fn draw_weight_sparklines_single_layer(
@@ -439,28 +455,40 @@ pub fn draw_weight_sparklines_single_layer(
         }
     };
     let n_weights = nh.snapshots.first().map(|s| s.neuron.weights.len()).unwrap_or(0);
+    let plot_height = (160.0 + (n_weights.saturating_sub(4) as f32) * 4.0).min(320.0);
+    let show_legend = n_weights <= LEGEND_LINE_LIMIT;
 
-    Plot::new(format!("sparkline_sl_n{}_{}", neuron_idx, id_salt))
-        .legend(Legend::default())
-        .height(160.0)
-        .show(ui, |plot_ui| {
-            for wi in 0..n_weights {
-                let pts: PlotPoints = nh
-                    .snapshots
-                    .iter()
-                    .map(|s| [s.epoch as f64, s.neuron.weights[wi]])
-                    .collect();
-                plot_ui.line(Line::new(pts).name(format!("w{}", wi)));
-            }
-            let bias_pts: PlotPoints = nh
+    if !show_legend {
+        ui.label(format!(
+            "({} weights — legend hidden; colors cycle w0..w{})",
+            n_weights,
+            n_weights - 1
+        ));
+    }
+
+    let mut p = Plot::new(format!("sparkline_sl_n{}_{}", neuron_idx, id_salt))
+        .height(plot_height);
+    if show_legend {
+        p = p.legend(Legend::default());
+    }
+    p.show(ui, |plot_ui| {
+        for wi in 0..n_weights {
+            let pts: PlotPoints = nh
                 .snapshots
                 .iter()
-                .map(|s| [s.epoch as f64, s.neuron.bias])
+                .map(|s| [s.epoch as f64, s.neuron.weights[wi]])
                 .collect();
-            plot_ui.line(
-                Line::new(bias_pts)
-                    .name("bias")
-                    .color(egui::Color32::from_rgb(180, 80, 200)),
-            );
-        });
+            let line = Line::new(pts);
+            let line = if show_legend { line.name(format!("w{}", wi)) } else { line };
+            plot_ui.line(line);
+        }
+        let bias_pts: PlotPoints = nh
+            .snapshots
+            .iter()
+            .map(|s| [s.epoch as f64, s.neuron.bias])
+            .collect();
+        let bias_line = Line::new(bias_pts).color(egui::Color32::from_rgb(180, 80, 200));
+        let bias_line = if show_legend { bias_line.name("bias") } else { bias_line };
+        plot_ui.line(bias_line);
+    });
 }

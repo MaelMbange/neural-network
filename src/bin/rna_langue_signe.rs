@@ -1,7 +1,8 @@
+use rand::seq::SliceRandom;
 use rna::{activation::tanh::Tanh, csv_reader::load_dataset_multi, layer::MLP};
 
 fn main() {
-    let (inputs, outputs) = load_dataset_multi(
+    let (mut inputs, outputs) = load_dataset_multi(
         "Datas/Datas/LangageDesSignes/data_formatted.csv",
         42,
         5,
@@ -31,11 +32,35 @@ fn main() {
             }
         };
 
+        let letter = match output {
+            0 => 'A',
+            1 => 'B',
+            2 => 'C',
+            3 => 'D',
+            4 => 'E',
+            _ => '?',
+        };
+
+        let result_letter = match result {
+            0 => 'A',
+            1 => 'B',
+            2 => 'C',
+            3 => 'D',
+            4 => 'E',
+            _ => '?',
+        };
+
         if result == output {
             correct += 1;
-            println!("{i}: => Output: {:?} (Expected: {:?})", result, output);
+            println!(
+                "{i}: => Output: {:?} (Expected: {:?})",
+                result_letter, letter
+            );
         } else {
-            println!("{i}: => Output: {:?} (Expected: {:?}) <", result, output);
+            println!(
+                "{i}: => Output: {:?} (Expected: {:?}) <",
+                result_letter, letter
+            );
         }
     }
     println!(

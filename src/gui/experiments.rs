@@ -203,7 +203,7 @@ pub fn all_experiments() -> Vec<ExperimentConfig> {
         },
         // ── single-layer ──────────────────────────────────────────────────────
         ExperimentConfig {
-            name: "adeline_singlelayer_3_1",
+            name: "adaline_singlelayer_3_1",
             kind: ExperimentKind::SingleLayer,
             dataset: DatasetSource::File {
                 path: "Datas/Datas/table_3_1.csv",
@@ -221,7 +221,7 @@ pub fn all_experiments() -> Vec<ExperimentConfig> {
             },
         },
         ExperimentConfig {
-            name: "adeline_singlelayer_3_5",
+            name: "adaline_singlelayer_3_5",
             kind: ExperimentKind::SingleLayer,
             dataset: DatasetSource::File {
                 path: "Datas/Datas/table_3_5.csv",
@@ -357,8 +357,8 @@ pub fn run_experiment(
         }
 
         // ── Single-layer ──────────────────────────────────────────────────────
-        "adeline_singlelayer_3_1" | "gradient_singlelayer_3_1"
-        | "adeline_singlelayer_3_5" => {
+        "adaline_singlelayer_3_1" | "gradient_singlelayer_3_1"
+        | "adaline_singlelayer_3_5" => {
             let (path, n_inputs, n_outputs) = match &cfg.dataset {
                 DatasetSource::File { path, n_inputs, n_outputs } => (path, n_inputs, n_outputs),
                 _ => unreachable!(),
@@ -369,7 +369,7 @@ pub fn run_experiment(
             let template = Perceptron::<Identity> {
                 weights: vec![0.0; *n_inputs], bias: 0.0, activation: PhantomData,
             };
-            let trainer_kind = if name.starts_with("adeline") {
+            let trainer_kind = if name.starts_with("adaline") {
                 SingleLayerTrainerKind::Adeline {
                     learning_rate: params.learning_rate,
                     tolerance: params.tolerance,

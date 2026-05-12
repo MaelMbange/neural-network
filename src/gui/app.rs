@@ -132,16 +132,24 @@ impl GuiApp {
         ui.heading("Experiments");
         ui.separator();
 
-        ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
-            for (i, name) in self.experiment_names.iter().enumerate() {
-                if ui.selectable_label(self.selected == i, *name).clicked() && self.selected != i {
-                    self.selected = i;
-                    self.training_state = TrainingState::Idle;
-                    self.ui_state = ExperimentUiState::default();
-                    self.hyper_params = HyperParams::defaults_for(name);
+        // Reserve space for controls below the list; fill the rest with the list.
+        // 310 ≈ hyperparams collapsing header + verbose checkbox + run + export + separators.
+        let list_height = (ui.available_height() - 310.0).max(120.0);
+        ScrollArea::vertical()
+            .id_salt("exp_list_scroll")
+            .max_height(list_height)
+            .show(ui, |ui| {
+                for (i, name) in self.experiment_names.iter().enumerate() {
+                    if ui.selectable_label(self.selected == i, *name).clicked()
+                        && self.selected != i
+                    {
+                        self.selected = i;
+                        self.training_state = TrainingState::Idle;
+                        self.ui_state = ExperimentUiState::default();
+                        self.hyper_params = HyperParams::defaults_for(name);
+                    }
                 }
-            }
-        });
+            });
 
         ui.separator();
         self.draw_hyperparams_panel(ui);
@@ -163,7 +171,18 @@ impl GuiApp {
             let params = self.hyper_params.clone();
             let tx = self.tx.clone();
             std::thread::spawn(move || {
-                let result = run_experiment(&name, verbose, &params);
+                // Catch panics so the GUI never gets stuck in "Training..." forever.
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    run_experiment(&name, verbose, &params)
+                }))
+                .unwrap_or_else(|e| {
+                    let msg = e
+                        .downcast_ref::<&str>()
+                        .copied()
+                        .or_else(|| e.downcast_ref::<String>().map(String::as_str))
+                        .unwrap_or("unknown panic");
+                    Err(format!("panic in training thread: {}", msg))
+                });
                 let _ = tx.send(result);
             });
             self.ui_state.playing = false;
