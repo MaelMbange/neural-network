@@ -1,3 +1,5 @@
+use rand::distr::uniform::SampleRange;
+
 use crate::{
     activation::{Activation, Derivative},
     perceptron::Perceptron,
@@ -15,9 +17,13 @@ pub struct Layer<A: Activation + Derivative> {
 }
 
 impl<A: Activation + Derivative> Layer<A> {
-    pub fn new(neuron_count: usize, num_inputs: usize) -> Self {
+    pub fn new<R: SampleRange<f64> + Clone>(
+        neuron_count: usize,
+        num_inputs: usize,
+        weight_range: R,
+    ) -> Self {
         let neurons = (0..neuron_count)
-            .map(|_| Perceptron::new_with_random_range(num_inputs, 0.0, -1.0..=1.0))
+            .map(|_| Perceptron::new_with_random_range(num_inputs, 0.0, weight_range.clone()))
             .collect();
 
         Self {
@@ -67,25 +73,28 @@ impl<A: Activation + Derivative> Layer<A> {
 #[derive(Debug, Clone)]
 pub struct MLP<A: Activation + Derivative> {
     pub layers: Vec<Layer<A>>,
-    pub tolerance: f64,
     pub epoch: usize,
 }
 
 impl<A: Activation + Derivative> MLP<A> {
-    pub fn new(layers_sizes: &[usize], input_size: usize, tolerance: f64) -> Self {
+    pub fn new<R: SampleRange<f64> + Clone>(
+        layers_sizes: &[usize],
+        input_size: usize,
+        weight_range: R,
+    ) -> Self {
         let mut layers = Vec::new();
         let mut current_input_size = input_size;
 
         for &size in layers_sizes {
-            layers.push(Layer::<A>::new(size, current_input_size));
+            layers.push(Layer::<A>::new(
+                size,
+                current_input_size,
+                weight_range.clone(),
+            ));
             current_input_size = size;
         }
 
-        Self {
-            layers,
-            tolerance,
-            epoch: 0,
-        }
+        Self { layers, epoch: 0 }
     }
 
     pub fn forward(&mut self, inputs: &[f64]) -> Vec<f64> {
@@ -103,6 +112,7 @@ impl<A: Activation + Derivative> MLP<A> {
         _inputs: &[Vec<f64>],
         _expected: &[Vec<f64>],
         _learning_rate: f64,
+        _tolerance: f64,
         _epochs: Option<usize>,
     ) {
         self.epoch = 0;
@@ -167,7 +177,7 @@ impl<A: Activation + Derivative> MLP<A> {
             }
 
             // on verifie si l'erreur quadratique moyenne est inférieure ou égale à la tolérance pour arrêter l'entraînement
-            if squarred_error_sum / _inputs.len() as f64 <= self.tolerance {
+            if squarred_error_sum / _inputs.len() as f64 <= _tolerance {
                 break;
             }
 
@@ -188,7 +198,10 @@ impl<A: Activation + Derivative> MLP<A> {
 
     pub fn classify_argmax(&mut self, inputs: &[f64]) -> usize {
         let y = self.forward(inputs);
-        assert!(!y.is_empty(), "classify_argmax attend au moins une sortie");
+        assert!(
+            y.len() >= 2,
+            "classify_argmax attend au moins 2 sorties (classification multi-classes)"
+        );
         y.iter()
             .enumerate()
             .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
