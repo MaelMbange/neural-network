@@ -409,6 +409,66 @@ pub fn draw_regression_1d(
         });
 }
 
+// ── Confusion matrix ──────────────────────────────────────────────────────────
+
+/// Draw an n×n confusion matrix as a colored text grid.
+/// Diagonal cells (correct) shown in green, off-diagonal errors in red, zeros in dark gray.
+pub fn draw_confusion_matrix(
+    ui: &mut Ui,
+    true_classes: &[usize],
+    pred_classes: &[usize],
+    n_classes: usize,
+    id_salt: &str,
+) {
+    if n_classes == 0 || true_classes.is_empty() {
+        return;
+    }
+
+    let mut matrix = vec![vec![0usize; n_classes]; n_classes];
+    for (&t, &p) in true_classes.iter().zip(pred_classes.iter()) {
+        if t < n_classes && p < n_classes {
+            matrix[t][p] += 1;
+        }
+    }
+    let total = true_classes.len();
+    let correct: usize = (0..n_classes).map(|i| matrix[i][i]).sum();
+    let accuracy = correct as f64 / total as f64 * 100.0;
+
+    ui.label(format!(
+        "Accuracy: {}/{} ({:.1}%)",
+        correct, total, accuracy
+    ));
+
+    egui::Grid::new(format!("conf_mat_{}", id_salt))
+        .num_columns(n_classes + 1)
+        .min_col_width(32.0)
+        .spacing([4.0, 2.0])
+        .show(ui, |ui| {
+            ui.label(egui::RichText::new("T \\ P").small().strong());
+            for j in 0..n_classes {
+                ui.label(egui::RichText::new(format!("P{}", j)).small().strong());
+            }
+            ui.end_row();
+
+            for i in 0..n_classes {
+                ui.label(egui::RichText::new(format!("T{}", i)).small().strong());
+                for j in 0..n_classes {
+                    let count = matrix[i][j];
+                    let text = egui::RichText::new(format!("{:4}", count)).small().monospace();
+                    let text = if i == j && count > 0 {
+                        text.color(egui::Color32::from_rgb(80, 220, 80))
+                    } else if count > 0 {
+                        text.color(egui::Color32::from_rgb(220, 80, 80))
+                    } else {
+                        text.color(egui::Color32::DARK_GRAY)
+                    };
+                    ui.label(text);
+                }
+                ui.end_row();
+            }
+        });
+}
+
 // ── Weight sparklines ─────────────────────────────────────────────────────────
 
 /// Threshold above which the per-line legend is hidden to avoid overflow.

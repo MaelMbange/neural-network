@@ -7,14 +7,14 @@ use crate::gui_module::{
     experiments::{ExperimentKind, TrainingResult, all_experiments, get_full_dataset, run_experiment},
     params::{HyperParams, MlpActivation},
     plots::{
-        draw_loss_curve, draw_loss_curve_mlp, draw_loss_curve_mlp_multi,
+        draw_confusion_matrix, draw_loss_curve, draw_loss_curve_mlp, draw_loss_curve_mlp_multi,
         draw_loss_curve_single_layer, draw_mlp_boundary_2d, draw_mlp_regression_1d,
         draw_regression_1d, draw_scatter_2d_boundary, draw_weight_sparklines_mlp,
         draw_weight_sparklines_single_layer,
     },
 };
 use crate::history::{MlpHistory, SingleLayerHistory};
-use crate::history::types::{EpochSnapshot, History};
+use crate::history::types::{ActivationName, EpochSnapshot, History, LayerSnapshot, MlpEpochSnapshot, NeuronSnapshot};
 
 // ── Background training channel ───────────────────────────────────────────────
 
@@ -527,18 +527,84 @@ impl GuiApp {
 
         let snap = &h.neuron_histories[ni].snapshots[self.ui_state.epoch_slider].clone();
 
-        // Scatter + decision boundary (only for 2-input datasets)
         if let Ok((inputs, targets)) = get_full_dataset(name) {
             let input_dim = inputs.first().map(|v| v.len()).unwrap_or(0);
-            if input_dim == 2 {
-                // Build this neuron's binary dataset: input × label for column ni
-                let neuron_dataset: Vec<(Vec<f64>, f64)> = inputs
+            let ei = self.ui_state.epoch_slider;
+
+            // Build a synthetic LayerSnapshot from all neurons at the current epoch.
+            // Used for both the 2D boundary and the confusion matrix.
+            let layer_snap = LayerSnapshot {
+                neurons: h
+                    .neuron_histories
                     .iter()
-                    .zip(targets.iter())
-                    .map(|(inp, tgt)| (inp.clone(), tgt.get(ni).copied().unwrap_or(0.0)))
+                    .map(|nh| {
+                        let idx = ei.min(nh.snapshots.len().saturating_sub(1));
+                        let s = &nh.snapshots[idx];
+                        NeuronSnapshot { weights: s.neuron.weights.clone(), bias: s.neuron.bias }
+                    })
+                    .collect(),
+                outputs_per_sample: vec![],
+                deltas: vec![],
+            };
+            let fake_snap = MlpEpochSnapshot {
+                epoch: ei,
+                layers: vec![layer_snap],
+                loss: 0.0,
+                per_output_mse: vec![],
+            };
+
+            if input_dim == 2 {
+                if n_neurons > 1 {
+                    // Multi-class 2D boundary — same style as cnl_4_14.
+                    ui.heading("Decision boundary");
+                    draw_mlp_boundary_2d(
+                        ui, ctx, &inputs, &targets, &fake_snap,
+                        &ActivationName::Identity, 0.5,
+                        &format!("{}_sl", name),
+                    );
+                } else {
+                    // Binary: reuse the original single-perceptron scatter.
+                    let neuron_dataset: Vec<(Vec<f64>, f64)> = inputs
+                        .iter()
+                        .zip(targets.iter())
+                        .map(|(inp, tgt)| (inp.clone(), tgt.first().copied().unwrap_or(0.0)))
+                        .collect();
+                    ui.heading("Decision boundary");
+                    draw_scatter_2d_boundary(ui, &neuron_dataset, snap, name);
+                }
+            }
+
+            // Confusion matrix for any multi-output single-layer experiment.
+            if n_neurons > 1 {
+                let true_classes: Vec<usize> = targets
+                    .iter()
+                    .map(|t| {
+                        t.iter()
+                            .enumerate()
+                            .max_by(|a, b| a.1.total_cmp(b.1))
+                            .map(|(i, _)| i)
+                            .unwrap_or(0)
+                    })
                     .collect();
-                ui.heading(format!("Decision boundary — neuron {}", ni));
-                draw_scatter_2d_boundary(ui, &neuron_dataset, snap, &format!("{}_n{}", name, ni));
+                let pred_classes: Vec<usize> = inputs
+                    .iter()
+                    .map(|inp| {
+                        fake_snap.layers[0]
+                            .neurons
+                            .iter()
+                            .map(|n| {
+                                n.weights.iter().zip(inp.iter()).map(|(w, x)| w * x).sum::<f64>()
+                                    + n.bias
+                            })
+                            .enumerate()
+                            .max_by(|a, b| a.1.total_cmp(&b.1))
+                            .map(|(i, _)| i)
+                            .unwrap_or(0)
+                    })
+                    .collect();
+                ui.separator();
+                ui.heading("Confusion matrix");
+                draw_confusion_matrix(ui, &true_classes, &pred_classes, n_neurons, name);
             }
         }
 
@@ -612,6 +678,49 @@ impl GuiApp {
             ui.separator();
             self.draw_playback_controls(ui, ctx, max_epoch);
             ui.add(Slider::new(&mut self.ui_state.epoch_slider, 0..=max_epoch).text("Snapshot"));
+
+            // Confusion matrix for multi-class high-dim MLPs.
+            if let Some(snap) = h.snapshots.get(self.ui_state.epoch_slider) {
+                let n_out = snap.layers.last().map(|l| l.neurons.len()).unwrap_or(0);
+                if n_out >= 2 {
+                    if let Some((_inputs, targets)) = full_data.as_ref() {
+                        let outputs_per_sample = &snap.layers.last().unwrap().outputs_per_sample;
+                        // outputs_per_sample length == number of training samples used.
+                        let n_samples = outputs_per_sample.len();
+                        if n_samples > 0 && n_samples <= targets.len() {
+                            let true_classes: Vec<usize> = targets[..n_samples]
+                                .iter()
+                                .map(|t| {
+                                    t.iter()
+                                        .enumerate()
+                                        .max_by(|a, b| a.1.total_cmp(b.1))
+                                        .map(|(i, _)| i)
+                                        .unwrap_or(0)
+                                })
+                                .collect();
+                            let pred_classes: Vec<usize> = outputs_per_sample
+                                .iter()
+                                .map(|out| {
+                                    out.iter()
+                                        .enumerate()
+                                        .max_by(|a, b| a.1.total_cmp(b.1))
+                                        .map(|(i, _)| i)
+                                        .unwrap_or(0)
+                                })
+                                .collect();
+                            ui.separator();
+                            ui.heading("Confusion matrix");
+                            draw_confusion_matrix(
+                                ui,
+                                &true_classes,
+                                &pred_classes,
+                                n_out,
+                                &format!("{}_mlp", name),
+                            );
+                        }
+                    }
+                }
+            }
         }
 
         // ── Layer / neuron inspector ──────────────────────────────────────────
