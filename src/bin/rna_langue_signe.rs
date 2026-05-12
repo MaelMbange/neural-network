@@ -1,13 +1,20 @@
+use rand::seq::SliceRandom;
 use rna::{activation::tanh::Tanh, csv_reader::load_dataset_multi, layer::MLP};
 
 fn main() {
-    let (mut inputs, outputs) = load_dataset_multi(
+    let (inputs, outputs) = load_dataset_multi(
         "Datas/Datas/LangageDesSignes/data_formatted.csv",
         42,
         5,
         false,
     )
     .expect("Failed to load dataset");
+
+    let mut rng = rand::rng();
+
+    let mut pairs: Vec<_> = inputs.into_iter().zip(outputs.into_iter()).collect();
+    pairs.shuffle(&mut rng);
+    let (inputs, outputs): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
 
     let mut mlp = MLP::<Tanh>::new(&[10, 5], 42, -1.0..=1.0);
 
