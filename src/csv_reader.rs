@@ -7,7 +7,7 @@ pub fn load_dataset_multi<P: AsRef<Path>>(
     n_inputs: usize,
     n_classes: usize,
     has_headers: bool,
-) -> Result<Vec<(Vec<f64>, Vec<f64>)>, Box<dyn Error>> {
+) -> Result<(Vec<Vec<f64>>, Vec<Vec<f64>>), Box<dyn Error>> {
     let expected = n_inputs + n_classes;
 
     let mut reader = ReaderBuilder::new()
@@ -16,7 +16,8 @@ pub fn load_dataset_multi<P: AsRef<Path>>(
         .trim(csv::Trim::All)
         .from_path(path)?;
 
-    let mut dataset = Vec::new();
+    let mut inputs = Vec::new();
+    let mut targets = Vec::new();
 
     for (i, result) in reader.records().enumerate() {
         let record = result?;
@@ -38,9 +39,10 @@ pub fn load_dataset_multi<P: AsRef<Path>>(
             .map(|s| s.parse::<f64>())
             .collect::<Result<_, _>>()?;
 
-        let (inputs, classes) = values.split_at(n_inputs);
-        dataset.push((inputs.to_vec(), classes.to_vec()));
+        let (row_inputs, row_classes) = values.split_at(n_inputs);
+        inputs.push(row_inputs.to_vec());
+        targets.push(row_classes.to_vec());
     }
 
-    Ok(dataset)
+    Ok((inputs, targets))
 }

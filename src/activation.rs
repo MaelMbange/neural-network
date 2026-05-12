@@ -5,5 +5,8 @@ pub mod tanh;
 
 pub trait Activation {
     fn activate(&self, x: f64) -> f64;
+}
+
+pub trait Derivative {
     fn derivative(&self, x: f64) -> f64;
 }

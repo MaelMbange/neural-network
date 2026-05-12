@@ -1,13 +1,11 @@
-use rna::neuron::{
-    Neuron,
+use rna::{
     activation::identity::Identity,
-    classification_config::ClassificationConfig,
-    gradient::Gradient,
-    history::{HistoryFile, HistoryRecorder},
+    perceptron::Perceptron,
+    trainer::{ClassificationStop, Train, gradient::Gradient},
 };
 
 fn main() {
-    let dataset = vec![
+    let dataset = [
         (vec![1.0, 2.0], 1.0),
         (vec![1.0, 4.0], -1.0),
         (vec![1.0, 5.0], 1.0),
@@ -33,50 +31,24 @@ fn main() {
         (vec![4.0, 6.0], 1.0),
     ];
 
-    let mut g = Gradient::new(
-        2,
-        0.0,
-        0.0015,
-        0.0,
-        &Some(ClassificationConfig {
+    let mut perceptron = Perceptron {
+        weights: vec![0.0; 2],
+        bias: 0.0,
+        activation: Identity,
+    };
+
+    let mut trainer = Gradient {
+        epoch: 0,
+        tolerance: 0.0,
+        learning_rate: 0.0015,
+        class_stop: &Some(ClassificationStop {
             error_limit: 3,
             threshold: 0.0,
             values: (-1.0, 1.0),
         }),
-        -1.0..=1.0,
-        Identity,
-    );
-    g.set_debug(true);
-    g.zero_weights();
-
-    println!("Gradient before: {:#?}", g);
-    let mut recorder = HistoryRecorder::new();
-    g.train_with_observer(&dataset, Some(1000), &mut recorder);
-    println!("Gradient after: {:#?}", g);
-
-    for (inputs, expected) in &dataset {
-        let prediction = g.classify(inputs, 0.0, (-1.0, 1.0));
-        println!(
-            "Inputs: {:?}, Expected: {}, Prediction: {}",
-            inputs, expected, prediction
-        );
-    }
-
-    let history_file = HistoryFile {
-        dataset: dataset.iter().map(|(v, l)| (v.clone(), *l)).collect(),
-        snapshots: recorder.snapshots,
-        class_threshold: 0.0,
-        boundary_threshold: 0.0,
     };
 
-    match serde_json::to_string_pretty(&history_file) {
-        Ok(json) => match std::fs::write("history.json", json) {
-            Ok(_) => println!(
-                "history.json written ({} snapshots)",
-                history_file.snapshots.len()
-            ),
-            Err(e) => eprintln!("failed to write history.json: {}", e),
-        },
-        Err(e) => eprintln!("failed to serialize history: {}", e),
-    }
+    println!("Before: {:#?}", perceptron);
+    trainer.train(&mut perceptron, &dataset, Some(1000));
+    println!("After epoch [{}]: {:#?}", trainer.epoch, perceptron);
 }
