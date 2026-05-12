@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use rna::{
     activation::identity::Identity,
     csv_reader::load_dataset_multi,
@@ -72,7 +74,7 @@ fn main() {
     let p = Perceptron {
         bias: 0.0,
         weights: vec![0.0; 25],
-        activation: Identity,
+        activation: PhantomData::<Identity>,
     };
 
     let trainer = Adeline::new(0.05, 0.001, &_conf);

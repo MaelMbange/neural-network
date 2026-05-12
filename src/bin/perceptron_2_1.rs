@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use rna::{
     activation::step::Step,
     perceptron::Perceptron,
@@ -15,7 +17,7 @@ fn main() {
     let mut perceptron = Perceptron {
         weights: vec![0.0; 2],
         bias: 0.0,
-        activation: Step,
+        activation: PhantomData::<Step>,
     };
 
     let mut trainer = Linear {

@@ -4,13 +4,13 @@ use crate::activation::{Activation, Derivative};
 pub struct Identity;
 
 impl Activation for Identity {
-    fn activate(&self, x: f64) -> f64 {
+    fn activate(x: f64) -> f64 {
         x
     }
 }
 
 impl Derivative for Identity {
-    fn derivative(&self, _x: f64) -> f64 {
+    fn derivative(_x: f64) -> f64 {
         1.0
     }
 }

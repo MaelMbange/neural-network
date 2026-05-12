@@ -4,9 +4,9 @@ pub mod step;
 pub mod tanh;
 
 pub trait Activation {
-    fn activate(&self, x: f64) -> f64;
+    fn activate(x: f64) -> f64;
 }
 
 pub trait Derivative {
-    fn derivative(&self, x: f64) -> f64;
+    fn derivative(x: f64) -> f64;
 }

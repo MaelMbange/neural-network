@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use rna::{
     activation::identity::Identity,
     csv_reader::load_dataset_multi,
@@ -80,7 +82,7 @@ fn main() {
     let p = Perceptron {
         bias: 0.0,
         weights: vec![0.0; 2],
-        activation: Identity,
+        activation: PhantomData::<Identity>,
     };
 
     let trainer = Gradient::new(0.01, 0.0001, &_conf);

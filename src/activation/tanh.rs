@@ -4,13 +4,13 @@ use crate::activation::{Activation, Derivative};
 pub struct Tanh;
 
 impl Activation for Tanh {
-    fn activate(&self, x: f64) -> f64 {
+    fn activate(x: f64) -> f64 {
         x.tanh()
     }
 }
 
 impl Derivative for Tanh {
-    fn derivative(&self, x: f64) -> f64 {
+    fn derivative(x: f64) -> f64 {
         1.0 - x.tanh().powi(2)
     }
 }
