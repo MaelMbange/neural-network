@@ -211,7 +211,7 @@ impl<A: Activation + Derivative> MLP<A> {
         y.iter()
             .enumerate()
             .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-            .map(|(i, _)| i)
+            .map(|(i, _)| i) // ici que l'on choisit de retourner l'indice de la classe avec la plus grande sortie
             .unwrap()
     }
 }
